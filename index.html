@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="遊戲屋">
+<meta name="theme-color" content="#8fd3ff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>歡樂遊戲屋</title>
+<style>
+:root{
+  --sky1:#8fd3ff; --sky2:#c3e9ff; --cream:#fff7ec;
+  --ink:#3a2f4a; --soft:#6b5e7d;
+  --c1:#ff9f43; --c2:#3fc66b; --c3:#ff7eb3; --c4:#ff5e57; --c5:#4d9bff;
+  --c6:#9b6dff; --c7:#16c2c2; --c8:#ff6fa5; --c9:#d56bff; --c10:#2dd4d4;
+  --shadow:0 10px 0 rgba(0,0,0,.12), 0 16px 26px rgba(0,0,0,.18);
+  --round:28px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;}
+body{
+  font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,var(--sky1),var(--sky2) 55%,#eafaff);
+  overflow:hidden; user-select:none; -webkit-user-select:none;
+  touch-action:manipulation; overscroll-behavior:none;
+}
+#app{position:fixed; inset:0; display:flex; flex-direction:column;}
+.screen{position:absolute; inset:0; display:none; flex-direction:column;}
+.screen.active{display:flex;}
+
+/* clouds */
+.clouds{position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0;}
+.cloud{position:absolute; font-size:64px; opacity:.85; animation:float 24s linear infinite;}
+@keyframes float{from{transform:translateX(-20vw)}to{transform:translateX(120vw)}}
+
+/* HOME */
+#home{padding:max(16px,env(safe-area-inset-top)) 18px 18px; z-index:1;}
+.home-title{
+  text-align:center; font-weight:900; font-size:clamp(28px,5vw,46px);
+  color:#fff; text-shadow:0 3px 0 #ffb43f,0 6px 0 #e98a00,0 10px 16px rgba(0,0,0,.2);
+  margin:6px 0 4px; letter-spacing:2px;
+}
+.home-sub{text-align:center; color:#2a6fb0; font-weight:800; margin:0 0 12px; font-size:clamp(13px,2.4vw,18px);}
+.grid{
+  flex:1; display:grid; gap:clamp(10px,1.8vw,18px);
+  grid-template-columns:repeat(5,1fr); grid-auto-rows:minmax(96px,1fr);
+  max-width:1100px; width:100%; margin:0 auto; align-content:center;
+  overflow-y:auto; -webkit-overflow-scrolling:touch; padding:4px;
+}
+@media (max-width:820px){.grid{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:820px) and (orientation:landscape){.grid{grid-template-columns:repeat(5,1fr);} }
+.card{
+  border:none; cursor:pointer; border-radius:var(--round); color:#fff;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; padding:10px; min-height:120px; position:relative;
+  box-shadow:var(--shadow); transition:transform .12s ease; font-family:inherit;
+  animation:pop .4s backwards;
+}
+.card:active{transform:translateY(6px) scale(.98); box-shadow:0 4px 0 rgba(0,0,0,.12),0 8px 14px rgba(0,0,0,.18);}
+.card .emoji{font-size:clamp(38px,6vw,58px); line-height:1; filter:drop-shadow(0 4px 4px rgba(0,0,0,.2));}
+.card .name{font-weight:900; font-size:clamp(15px,2.4vw,21px); text-shadow:0 2px 3px rgba(0,0,0,.25);}
+@keyframes pop{from{transform:scale(.4); opacity:0}to{transform:scale(1);opacity:1}}
+
+/* GAME SHELL */
+#game{z-index:2; background:linear-gradient(180deg,#fff7ec,#ffeede);}
+.topbar{
+  display:flex; align-items:center; gap:10px; padding:max(10px,env(safe-area-inset-top)) 14px 10px;
+}
+.tbtn{
+  border:none; font-family:inherit; cursor:pointer; border-radius:18px; color:#fff;
+  font-weight:900; font-size:20px; padding:10px 16px; box-shadow:0 5px 0 rgba(0,0,0,.18);
+  display:flex; align-items:center; gap:6px;
+}
+.tbtn:active{transform:translateY(4px); box-shadow:0 1px 0 rgba(0,0,0,.18);}
+.tbtn.home{background:#ff7a59;}
+.tbtn.mute{background:#5aa9ff; margin-left:auto;}
+.gtitle{font-weight:900; font-size:clamp(18px,3vw,26px); color:var(--ink);}
+.scorepill{margin-left:8px; background:#ffd54a; color:#6b4b00; font-weight:900; padding:8px 14px; border-radius:16px; box-shadow:0 4px 0 #e0a900; font-size:18px;}
+#gameStage{flex:1; position:relative; overflow:hidden; padding:8px clamp(8px,2vw,20px) clamp(12px,2vw,20px);}
+.stage-card{
+  position:absolute; inset:8px clamp(8px,2vw,20px) clamp(12px,2vw,20px);
+  background:#fff; border-radius:26px; box-shadow:inset 0 0 0 5px rgba(0,0,0,.04),0 14px 30px rgba(0,0,0,.1);
+  overflow:hidden; display:flex; flex-direction:column;
+}
+
+/* generic helpers */
+.center{display:flex; align-items:center; justify-content:center;}
+.col{display:flex; flex-direction:column;}
+.fill{flex:1;}
+.hint{position:absolute; top:10px; left:0; right:0; text-align:center; font-weight:900; color:var(--soft); font-size:clamp(16px,2.6vw,22px); pointer-events:none;}
+.bigbtn{
+  border:none; font-family:inherit; cursor:pointer; font-weight:900; color:#fff;
+  background:#3fc66b; border-radius:20px; padding:14px 26px; font-size:22px;
+  box-shadow:0 6px 0 #2ba14f; 
+}
+.bigbtn:active{transform:translateY(5px); box-shadow:0 1px 0 #2ba14f;}
+
+/* overlay celebrate */
+.overlay{
+  position:absolute; inset:0; background:rgba(40,20,60,.45); backdrop-filter:blur(2px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; z-index:30;
+  animation:fade .25s;
+}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.overlay .msg{font-size:clamp(30px,6vw,52px); font-weight:900; color:#fff; text-shadow:0 4px 0 #ff9f43,0 8px 14px rgba(0,0,0,.3); text-align:center;}
+.overlay .star{font-size:90px; animation:spin 1.2s ease infinite alternate;}
+@keyframes spin{from{transform:rotate(-12deg) scale(1)}to{transform:rotate(12deg) scale(1.15)}}
+
+/* confetti */
+.confetti{position:absolute; top:-20px; width:12px; height:18px; border-radius:3px; z-index:40; animation:drop 1.5s ease-in forwards;}
+@keyframes drop{to{transform:translate(var(--x,0),120vh) rotate(540deg); opacity:.2}}
+
+.tap-pop{animation:tappop .3s;}
+@keyframes tappop{0%{transform:scale(1)}50%{transform:scale(1.25)}100%{transform:scale(1)}}
+.shake{animation:shake .35s;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+button{font-family:inherit;}
+svg{display:block;}
+.row-wrap{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center;}
+
+/* home top row with stars + music */
+.home-top{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:8px; flex-wrap:wrap;}
+.starcount{background:#fff; color:#e08a00; font-weight:900; padding:6px 16px; border-radius:18px; box-shadow:0 4px 0 rgba(0,0,0,.12); font-size:clamp(15px,2.6vw,20px); display:flex; align-items:center; gap:4px;}
+.musicbtn{border:none; cursor:pointer; background:#fff; color:#7c4dff; font-weight:900; padding:6px 14px; border-radius:18px; box-shadow:0 4px 0 rgba(0,0,0,.12); font-size:clamp(14px,2.4vw,18px); font-family:inherit;}
+.musicbtn:active{transform:translateY(3px); box-shadow:none;}
+/* bob animation on cards */
+.card{animation:pop .4s backwards, bob 3s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.card .emoji{position:relative;}
+.card .badge{position:absolute; top:6px; right:8px; font-size:20px; filter:none; text-shadow:0 1px 2px rgba(0,0,0,.3);}
+/* reward shelf */
+.shelf{max-width:1100px; width:100%; margin:8px auto 0; background:rgba(255,255,255,.55); border-radius:22px; padding:8px 10px; display:flex; gap:6px; justify-content:center; flex-wrap:wrap; box-shadow:inset 0 2px 6px rgba(0,0,0,.06);}
+.shelf .slot{width:clamp(34px,7vw,46px); height:clamp(34px,7vw,46px); border-radius:14px; background:rgba(255,255,255,.6); display:flex; align-items:center; justify-content:center; font-size:clamp(20px,4.5vw,28px); filter:grayscale(1) opacity(.35); transition:filter .3s, transform .3s;}
+.shelf .slot.earned{filter:none; transform:scale(1.05); background:#fff; box-shadow:0 3px 0 rgba(0,0,0,.1);}
+.plus-one{position:absolute; font-size:40px; font-weight:900; color:#ffd54a; text-shadow:0 3px 0 #e0a900; z-index:50; animation:plusUp 1s ease forwards; pointer-events:none;}
+@keyframes plusUp{0%{transform:translateY(0) scale(.5); opacity:0}30%{opacity:1}100%{transform:translateY(-80px) scale(1.3); opacity:0}}
+@media (prefers-reduced-motion: reduce){.card{animation:pop .4s backwards;} .cloud{animation:none;}}
+
+/* settings sheet */
+.sheet{background:#fff; border-radius:26px; padding:22px; width:min(360px,86vw); box-shadow:0 18px 50px rgba(0,0,0,.3); display:flex; flex-direction:column; gap:12px;}
+.sheet h3{margin:0 0 4px; text-align:center; color:#5a3a7a; font-size:24px;}
+.srow{display:flex; align-items:center; justify-content:space-between; gap:10px; background:#f4eefc; border-radius:16px; padding:12px 16px; font-weight:900; color:#5a3a7a; font-size:18px;}
+.sbtn{border:none; cursor:pointer; font-family:inherit; font-weight:900; border-radius:14px; padding:8px 16px; font-size:16px; color:#fff; box-shadow:0 4px 0 rgba(0,0,0,.18);}
+.sbtn:active{transform:translateY(3px); box-shadow:none;}
+.sbtn.on{background:#3fc66b;} .sbtn.off{background:#aab;} .sbtn.blue{background:#4d9bff;} .sbtn.red{background:#ff6b5e;} .sbtn.grey{background:#9aa7b5;}
+/* lock ring on home button */
+.tbtn.home{position:relative; overflow:hidden;}
+.lockring{position:absolute; left:0; bottom:0; height:6px; width:0; background:#ffd54a; pointer-events:none;}
+/* trophy */
+.trophy{font-size:120px; animation:spin 1.2s ease infinite alternate; filter:drop-shadow(0 8px 10px rgba(0,0,0,.3));}
+/* toast */
+#toast{position:fixed; left:50%; bottom:14%; transform:translateX(-50%) translateY(20px); background:rgba(40,20,60,.92); color:#fff; font-weight:900; padding:12px 22px; border-radius:18px; font-size:18px; opacity:0; transition:opacity .25s, transform .25s; z-index:99; pointer-events:none;}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+.diff-wrap{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:18px;}
+.diff-btn{border:none; cursor:pointer; font-family:inherit; font-weight:900; color:#fff; border-radius:22px; padding:18px 30px; font-size:24px; box-shadow:0 6px 0 rgba(0,0,0,.2); width:min(280px,80%);}
+.diff-btn:active{transform:translateY(4px); box-shadow:0 2px 0 rgba(0,0,0,.2);}
+
+/* memory cards */
+.mem-grid{flex:1; display:grid; gap:8px; padding:12px; place-content:center;}
+.mcard{position:relative; cursor:pointer; border-radius:16px; aspect-ratio:1; min-width:54px;}
+.mface{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; border-radius:16px; backface-visibility:hidden; transition:transform .35s; font-size:clamp(28px,6vw,46px); box-shadow:0 4px 0 rgba(0,0,0,.18);}
+.mback{background:linear-gradient(160deg,#8a6dff,#6a4dff); color:#fff;}
+.mfront{background:#fff; transform:rotateY(180deg);}
+.mcard.flipped .mback{transform:rotateY(180deg);} .mcard.flipped .mfront{transform:rotateY(360deg);}
+.mcard.matched .mfront{box-shadow:0 0 0 4px #3fc66b, 0 4px 0 rgba(0,0,0,.1);}
+/* piano */
+.piano{flex:1; display:flex; align-items:stretch; gap:6px; padding:18px 12px;}
+.pkey{flex:1; border:none; cursor:pointer; border-radius:0 0 16px 16px; color:#fff; font-weight:900; font-size:clamp(14px,2.6vw,20px); display:flex; align-items:flex-end; justify-content:center; padding-bottom:14px; box-shadow:0 8px 0 rgba(0,0,0,.18); transition:transform .06s;}
+.pkey:active,.pkey.down{transform:translateY(6px); box-shadow:0 2px 0 rgba(0,0,0,.18);}
+/* odd one out */
+.odd-grid{flex:1; display:grid; gap:6px; padding:12px; place-content:center;}
+.odd-cell{cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:clamp(26px,6vw,46px); background:#f4eefc; border-radius:14px; aspect-ratio:1; min-width:48px; transition:transform .1s;}
+.odd-cell:active{transform:scale(.9);}
+/* bopomofo */
+.bp-tabs{display:flex; gap:8px; justify-content:center; padding:8px;}
+.bp-grid{flex:1; display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:8px; padding:10px; overflow-y:auto; align-content:start;}
+.bp-tile{cursor:pointer; background:#fff; border-radius:16px; box-shadow:0 4px 0 #d8c4f0,inset 0 0 0 3px #efe4fb; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px 4px; gap:2px;}
+.bp-tile:active{transform:translateY(3px); box-shadow:0 1px 0 #d8c4f0,inset 0 0 0 3px #efe4fb;}
+.bp-sym{font-size:clamp(30px,6vw,44px); font-weight:900; color:#7c3aed; line-height:1;}
+.bp-word{font-size:13px; color:#777; font-weight:700;}
+.bp-emoji{font-size:24px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="home" class="screen active">
+    <div class="clouds" aria-hidden="true">
+      <div class="cloud" style="top:8%; animation-delay:0s">☁️</div>
+      <div class="cloud" style="top:22%; animation-delay:-8s; font-size:46px">☁️</div>
+      <div class="cloud" style="top:5%; animation-delay:-15s; font-size:80px">⛅</div>
+    </div>
+    <h1 class="home-title">🌈 歡樂遊戲屋 🌈</h1>
+    <div class="home-top">
+      <span class="starcount" id="starCount">⭐ 0</span>
+      <button class="musicbtn" id="musicBtn">🎵 音樂：關</button>
+      <button class="musicbtn" id="settingsBtn">⚙️ 設定</button>
+    </div>
+    <p class="home-sub">點一下圖案就可以開始玩囉！</p>
+    <div id="grid" class="grid"></div>
+    <div id="shelf" class="shelf"></div>
+  </section>
+
+  <section id="game" class="screen">
+    <div class="topbar">
+      <button class="tbtn home" id="homeBtn">🏠 回家</button>
+      <span class="gtitle" id="gameTitle"></span>
+      <span class="scorepill" id="scorePill" style="display:none"></span>
+      <button class="tbtn mute" id="muteBtn">🔊</button>
+    </div>
+    <div id="gameStage"></div>
+  </section>
+</div>
+<div id="toast"></div>
+<script>
+/* ============ helpers ============ */
+const $=s=>document.querySelector(s);
+const stage=()=>$("#gameStage");
+function el(tag,cls,html){const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e;}
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function shuffle(a){a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;}
+function svgURL(svg){return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'")';}
+
+/* ============ sound ============ */
+const Sound=(()=>{let ctx,on=true;
+  function ensure(){if(!ctx){try{ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}}
+  function blip(freq,dur,type,vol){dur=dur||.12;type=type||'sine';vol=vol==null?.18:vol;
+    if(!on)return; ensure(); if(!ctx)return;
+    try{const o=ctx.createOscillator(),g=ctx.createGain(); o.type=type;o.frequency.value=freq;
+      o.connect(g);g.connect(ctx.destination); const t=ctx.currentTime;
+      g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+      o.start(t);o.stop(t+dur);}catch(e){}}
+  return{
+    blip:blip,
+    tap(){blip(520,.08,'sine',.12);},
+    good(){blip(660,.1);setTimeout(()=>blip(990,.13),90);},
+    bad(){blip(180,.2,'sawtooth',.13);},
+    win(){[523,659,784,1046,1318].forEach((f,i)=>setTimeout(()=>blip(f,.16,'triangle',.22),i*110));},
+    pop(){blip(pick([700,760,820,640]),.07,'square',.1);},
+    toggle(){on=!on;return on;}, isOn:()=>on
+  };
+})();
+
+/* ============ effects ============ */
+function confetti(host){
+  const cols=['#ff5e57','#ff9f43','#ffd54a','#3fc66b','#4d9bff','#9b6dff','#ff7eb3'];
+  for(let i=0;i<46;i++){const s=el('div','confetti');
+    s.style.left=Math.random()*100+'%'; s.style.background=pick(cols);
+    s.style.setProperty('--x',(Math.random()*240-120)+'px');
+    s.style.animationDelay=(Math.random()*.4)+'s';
+    s.style.transform='rotate('+rand(0,360)+'deg)';
+    host.appendChild(s); setTimeout(()=>s.remove(),2000);}
+}
+function celebrate(host,msg,onAgain){
+  Sound.win(); confetti(host);
+  if(current){ Stars.award(current.id); }
+  const cheers=['太棒了！','你好厲害！','做得很好！','好棒喔！','完成囉！'];
+  const ov=el('div','overlay');
+  Speak.say(pick(['太棒了','你好厲害','你做到了','好棒喔']));
+  ov.appendChild(el('div','star','⭐'));
+  ov.appendChild(el('div','msg',msg||pick(cheers)));
+  const pone=el('div','plus-one','+1 ⭐'); pone.style.left='50%'; pone.style.top='40%'; ov.appendChild(pone);
+  const b=el('button','bigbtn','🔁 再玩一次');
+  b.onclick=()=>{Sound.tap(); ov.remove(); onAgain&&onAgain();};
+  ov.appendChild(b); host.appendChild(ov);
+}
+
+/* ============ score pill ============ */
+const Score={
+  show(txt){const p=$("#scorePill"); p.style.display='inline-block'; p.textContent=txt;},
+  hide(){$("#scorePill").style.display='none';}
+};
+
+/* ============ stars / rewards ============ */
+const Stars=(()=>{
+  let total=0, done={}, trophy=false;
+  try{ const s=JSON.parse(localStorage.getItem('hgw_stars')||'{}'); total=s.total||0; done=s.done||{}; trophy=!!s.trophy; }catch(e){}
+  function save(){ try{ localStorage.setItem('hgw_stars',JSON.stringify({total,done,trophy})); }catch(e){} }
+  function award(id){ total++; done[id]=true; save(); refresh(); }
+  function allDone(){ return GAMES.length>0 && GAMES.every(g=>done[g.id]); }
+  function reset(){ total=0; done={}; trophy=false; save(); refresh(); }
+  function refresh(){
+    const sc=$("#starCount"); if(sc) sc.textContent='⭐ '+total;
+    const shelf=$("#shelf"); if(!shelf)return; shelf.innerHTML='';
+    GAMES.forEach(g=>{ const d=el('div','slot'+(done[g.id]?' earned':'')); d.textContent=g.icon; shelf.appendChild(d); });
+  }
+  return { award, refresh, reset, allDone, total:()=>total,
+    trophyShown:()=>trophy, markTrophy(){ trophy=true; save(); } };
+})();
+
+/* ============ settings ============ */
+const Settings=(()=>{
+  let s={childLock:false, voice:true};
+  try{ s=Object.assign(s,JSON.parse(localStorage.getItem('hgw_set')||'{}')); }catch(e){}
+  function save(){ try{ localStorage.setItem('hgw_set',JSON.stringify(s)); }catch(e){} }
+  return { get childLock(){return s.childLock;}, set childLock(v){s.childLock=v;save();},
+           get voice(){return s.voice;}, set voice(v){s.voice=v;save();} };
+})();
+
+/* ============ chinese voice (TTS) ============ */
+const Speak=(()=>{
+  let zhVoice=null;
+  function loadVoice(){ try{ const vs=window.speechSynthesis.getVoices();
+    zhVoice=vs.find(v=>/zh.?TW/i.test(v.lang))||vs.find(v=>/^zh/i.test(v.lang))||null; }catch(e){} }
+  try{ if(window.speechSynthesis){ loadVoice(); window.speechSynthesis.onvoiceschanged=loadVoice; } }catch(e){}
+  function say(text){
+    if(!Settings.voice||!text)return;
+    try{ if(!window.speechSynthesis)return;
+      window.speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(String(text));
+      u.lang='zh-TW'; u.rate=.92; u.pitch=1.15; if(zhVoice)u.voice=zhVoice;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  return { say };
+})();
+
+/* ============ background music ============ */
+const Music=(()=>{
+  let ctx,gain,on=false,timer,step=0;
+  const notes=[523,587,659,784,659,587,523,659,784,880,784,659];
+  function start(){
+    if(on)return; on=true;
+    try{ ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+      gain=ctx.createGain(); gain.gain.value=0.06; gain.connect(ctx.destination);
+      tick();
+    }catch(e){ on=false; }
+  }
+  function tick(){
+    if(!on||!ctx)return;
+    try{ const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='triangle'; o.frequency.value=notes[step%notes.length];
+      g.gain.value=0; o.connect(g); g.connect(gain);
+      const t=ctx.currentTime; g.gain.linearRampToValueAtTime(.5,t+.05); g.gain.linearRampToValueAtTime(0,t+.45);
+      o.start(t); o.stop(t+.5);
+    }catch(e){}
+    step++; timer=setTimeout(tick,420);
+  }
+  function stop(){ on=false; clearTimeout(timer); }
+  function toggle(){ if(on){stop();return false;} start(); return true; }
+  return { toggle, isOn:()=>on };
+})();
+
+/* ============ misc UI helpers ============ */
+let toastT=null;
+function toast(msg){
+  const t=$("#toast"); if(!t)return; t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function toggleFullscreen(){
+  try{
+    if(!document.fullscreenElement){ (document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen).call(document.documentElement); }
+    else{ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+  }catch(e){ toast('這個瀏覽器不支援全螢幕'); }
+}
+
+/* ============ router ============ */
+const GAMES=[];
+let current=null;
+function openGame(g){
+  Sound.tap(); current=g; Score.hide();
+  $("#gameTitle").textContent=g.title;
+  $("#home").classList.remove('active');
+  $("#game").classList.add('active');
+  const st=stage(); st.innerHTML='';
+  try{ g.start(st); }catch(e){ st.appendChild(el('div','hint','哎呀，遊戲出了點問題 '+e.message)); }
+  Speak.say(g.say||g.title);
+}
+function goHome(){
+  Sound.tap();
+  if(current&&current.stop){try{current.stop();}catch(e){}}
+  current=null;
+  $("#game").classList.remove('active');
+  $("#home").classList.add('active');
+  stage().innerHTML='';
+  maybeTrophy();
+}
+function maybeTrophy(){
+  if(Stars.allDone() && !Stars.trophyShown()){ Stars.markTrophy(); showTrophy(); }
+}
+function showTrophy(){
+  Sound.win();
+  const ov=el('div','overlay');
+  const host=$("#home"); confetti(host);
+  ov.appendChild(el('div','trophy','🏆'));
+  ov.appendChild(el('div','msg','全部蒐集完成！<br>你是遊戲大冠軍！'));
+  const row=el('div','row-wrap');
+  const keep=el('button','bigbtn','😄 繼續玩'); keep.onclick=()=>{Sound.tap();ov.remove();};
+  const again=el('button','bigbtn','🔄 再蒐集一次'); again.style.background='#ff9f43'; again.style.boxShadow='0 6px 0 #d97a00';
+  again.onclick=()=>{Sound.tap(); Stars.reset(); ov.remove(); toast('進度已重新開始！');};
+  row.appendChild(keep); row.appendChild(again); ov.appendChild(row);
+  host.appendChild(ov);
+}
+function openSettings(){
+  const ov=el('div','overlay'); 
+  const sheet=el('div','sheet');
+  sheet.appendChild(el('h3','','⚙️ 設定'));
+  // child lock row
+  const lockRow=el('div','srow'); lockRow.appendChild(el('span','','🔒 兒童鎖'));
+  const lockBtn=el('button','sbtn '+(Settings.childLock?'on':'off')); lockBtn.textContent=Settings.childLock?'開':'關';
+  lockBtn.onclick=()=>{Sound.tap(); Settings.childLock=!Settings.childLock; lockBtn.className='sbtn '+(Settings.childLock?'on':'off'); lockBtn.textContent=Settings.childLock?'開':'關'; toast(Settings.childLock?'要按住「回家」才能離開':'兒童鎖已關閉');};
+  lockRow.appendChild(lockBtn); sheet.appendChild(lockRow);
+  // voice row
+  const vRow=el('div','srow'); vRow.appendChild(el('span','','🗣️ 中文語音'));
+  const vBtn=el('button','sbtn '+(Settings.voice?'on':'off')); vBtn.textContent=Settings.voice?'開':'關';
+  vBtn.onclick=()=>{Sound.tap(); Settings.voice=!Settings.voice; vBtn.className='sbtn '+(Settings.voice?'on':'off'); vBtn.textContent=Settings.voice?'開':'關'; if(Settings.voice)Speak.say('你好');};
+  vRow.appendChild(vBtn); sheet.appendChild(vRow);
+  // fullscreen row
+  const fsRow=el('div','srow'); fsRow.appendChild(el('span','','⛶ 全螢幕'));
+  const fsBtn=el('button','sbtn blue','切換'); fsBtn.onclick=()=>{Sound.tap(); toggleFullscreen();};
+  fsRow.appendChild(fsBtn); sheet.appendChild(fsRow);
+  // reset row
+  const rsRow=el('div','srow'); rsRow.appendChild(el('span','','🗑️ 蒐集進度'));
+  const rsBtn=el('button','sbtn red','重設'); rsBtn.onclick=()=>{Sound.bad(); Stars.reset(); toast('進度已清除'); };
+  rsRow.appendChild(rsBtn); sheet.appendChild(rsRow);
+  // close
+  const close=el('button','sbtn grey','關閉設定'); close.style.marginTop='4px'; close.onclick=()=>{Sound.tap(); ov.remove();};
+  sheet.appendChild(close);
+  ov.appendChild(sheet); ov.onclick=(e)=>{ if(e.target===ov){ov.remove();} };
+  $("#home").appendChild(ov);
+}
+function renderHome(){
+  const g=$("#grid"); g.innerHTML='';
+  GAMES.forEach((game,i)=>{
+    const c=el('button','card');
+    c.style.background='linear-gradient(160deg,'+game.color+','+game.color2+')';
+    c.style.animationDelay=(i*0.05)+'s, '+(i*0.18)+'s';
+    c.innerHTML='<span class="emoji">'+game.icon+'</span><span class="name">'+game.title+'</span>';
+    c.onclick=()=>openGame(game);
+    g.appendChild(c);
+  });
+}
+function bindShell(){
+  setupHomeButton();
+  $("#muteBtn").onclick=function(){const on=Sound.toggle(); this.textContent=on?'🔊':'🔇'; if(on)Sound.tap();};
+  $("#musicBtn").onclick=function(){const on=Music.toggle(); this.textContent=on?'🎵 音樂：開':'🎵 音樂：關';};
+  $("#settingsBtn").onclick=function(){Sound.tap(); openSettings();};
+}
+function setupHomeButton(){
+  const btn=$("#homeBtn");
+  const ring=el('span','lockring'); btn.appendChild(ring);
+  let holdT=null, held=false;
+  function start(){
+    if(!Settings.childLock)return;
+    ring.style.transition='width .9s linear'; ring.style.width='100%';
+    holdT=setTimeout(()=>{ held=true; ring.style.transition='none'; ring.style.width='0'; goHome(); },900);
+  }
+  function cancel(){
+    if(holdT){clearTimeout(holdT);holdT=null;}
+    ring.style.transition='width .2s'; ring.style.width='0';
+  }
+  btn.addEventListener('pointerdown',start);
+  btn.addEventListener('pointerup',cancel);
+  btn.addEventListener('pointerleave',cancel);
+  btn.addEventListener('pointercancel',cancel);
+  btn.addEventListener('click',()=>{
+    if(held){ held=false; return; }
+    if(Settings.childLock){ btn.classList.add('shake'); setTimeout(()=>btn.classList.remove('shake'),350); toast('按住「回家」2秒才能離開喔'); }
+    else goHome();
+  });
+}
+
+/* stage card helper */
+function makeCard(st){const card=el('div','stage-card'); st.appendChild(card); return card;}
+/* ===================== GAME 1: 挖土機挖寶 ===================== */
+GAMES.push({
+  id:'dig', title:'挖土機', icon:'🚜', color:'#ffb24a', color2:'#ff8c00',
+  start(st){
+    const card=makeCard(st);
+    card.style.background='linear-gradient(180deg,#cfeffd 0 45%,#b88a55 45% 100%)';
+    const treasures=['💎','🪙','🦴','🐛','🥕','💍','🔵','🟡'];
+    let found=0,total=12;
+    Score.show('寶物 0');
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const exc=el('div'); exc.style.cssText='font-size:64px;text-align:center;padding-top:10px;transition:transform .2s;';
+    exc.textContent='🚜';
+    const gridEl=el('div'); gridEl.style.cssText='flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);gap:10px;padding:14px;';
+    const hidden=shuffle(Array.from({length:total},(_, i)=>pick(treasures)));
+    for(let i=0;i<total;i++){
+      const mound=el('button'); mound.style.cssText='border:none;cursor:pointer;border-radius:18px;background:radial-gradient(circle at 40% 30%,#a9743f,#7d5128);box-shadow:inset 0 -6px 0 rgba(0,0,0,.2),0 4px 0 #5e3d1e;font-size:clamp(30px,7vw,52px);display:flex;align-items:center;justify-content:center;position:relative;';
+      mound.dataset.done='0'; mound.innerHTML='<span style="filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))">⛰️</span>';
+      mound.onclick=()=>{
+        if(mound.dataset.done==='1')return;
+        mound.dataset.done='1'; Sound.pop();
+        exc.style.transform='translateX('+rand(-40,40)+'px) rotate('+rand(-8,8)+'deg)';
+        setTimeout(()=>exc.style.transform='',220);
+        mound.classList.add('shake');
+        setTimeout(()=>{
+          mound.style.background='radial-gradient(circle at 50% 50%,#e9d3b0,#c9a877)';
+          mound.style.boxShadow='inset 0 0 0 4px #b08a5a';
+          mound.innerHTML='<span class="tap-pop">'+hidden[i]+'</span>';
+          Sound.good(); found++; Score.show('寶物 '+found);
+          if(found===total) setTimeout(()=>celebrate(card,'全部挖完啦！',()=>this.start(st)),400);
+        },280);
+      };
+      gridEl.appendChild(mound);
+    }
+    wrap.appendChild(exc); wrap.appendChild(gridEl); card.appendChild(wrap);
+    card.appendChild(el('div','hint','點泥土堆，挖出寶物！'));
+  }
+});
+
+/* ===================== GAME 2: 垃圾車分類 ===================== */
+GAMES.push({
+  id:'trash', title:'垃圾車', icon:'🚛', color:'#5fd07a', color2:'#2ba14f',
+  start(st){
+    const card=makeCard(st);
+    const items=[
+      {e:'🍌',cat:'food'},{e:'🍎',cat:'food'},{e:'🦴',cat:'food'},{e:'🥚',cat:'food'},
+      {e:'🍾',cat:'recycle'},{e:'🥫',cat:'recycle'},{e:'📰',cat:'recycle'},{e:'📦',cat:'recycle'},
+      {e:'🧻',cat:'trash'},{e:'👟',cat:'trash'},{e:'🩹',cat:'trash'},{e:'🪥',cat:'trash'}
+    ];
+    const bins=[{cat:'trash',e:'🗑️',name:'一般',col:'#9aa7b5'},{cat:'recycle',e:'♻️',name:'回收',col:'#4d9bff'},{cat:'food',e:'🍴',name:'廚餘',col:'#ff9f43'}];
+    let queue=shuffle(items), idx=0, done=0;
+    Score.show('0 / '+items.length);
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const truck=el('div'); truck.style.cssText='font-size:54px;text-align:center;padding-top:6px;transition:transform .2s;'; truck.textContent='🚛';
+    const itemBox=el('div'); itemBox.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;';
+    const cur=el('div'); cur.style.cssText='font-size:clamp(70px,16vw,120px);filter:drop-shadow(0 6px 6px rgba(0,0,0,.2));'; itemBox.appendChild(cur);
+    const binRow=el('div'); binRow.style.cssText='display:flex;gap:12px;padding:14px;justify-content:center;';
+    bins.forEach(b=>{
+      const btn=el('button'); btn.style.cssText='flex:1;max-width:160px;border:none;cursor:pointer;border-radius:20px;background:'+b.col+';color:#fff;font-weight:900;padding:14px 6px;box-shadow:0 6px 0 rgba(0,0,0,.2);display:flex;flex-direction:column;align-items:center;gap:4px;';
+      btn.innerHTML='<span style="font-size:44px">'+b.e+'</span><span style="font-size:18px">'+b.name+'</span>';
+      btn.onclick=()=>{
+        const it=queue[idx];
+        if(b.cat===it.cat){
+          Sound.good(); truck.style.transform='scale(1.2)'; setTimeout(()=>truck.style.transform='',200);
+          done++; idx++; Score.show(done+' / '+items.length);
+          if(idx>=queue.length){setTimeout(()=>celebrate(card,'垃圾分類完成！',()=>this.start(st)),350); cur.textContent='✅';}
+          else next();
+        }else{Sound.bad(); btn.classList.add('shake'); setTimeout(()=>btn.classList.remove('shake'),350);}
+      };
+      binRow.appendChild(btn);
+    });
+    function next(){cur.style.animation='none'; void cur.offsetWidth; cur.classList.add('tap-pop'); cur.textContent=queue[idx].e;
+      setTimeout(()=>cur.classList.remove('tap-pop'),300);}
+    cur.textContent=queue[0].e;
+    wrap.appendChild(truck); wrap.appendChild(itemBox); wrap.appendChild(binRow); card.appendChild(wrap);
+    card.appendChild(el('div','hint','把垃圾丟到對的桶子裡！'));
+  }
+});
+
+/* ===================== GAME 3: 動物醫院 ===================== */
+GAMES.push({
+  id:'vet', title:'動物醫院', icon:'🐱', color:'#ff9ec4', color2:'#ff5e95',
+  start(st){
+    const card=makeCard(st);
+    const animals=['🐶','🐱','🐰','🐻','🐼','🦊','🐯','🐨','🐷','🐮','🐸','🐵','🦁','🐭','🐹','🐔'];
+    const problems=[
+      {bad:'🤕',tool:'🩹',name:'繃帶',msg:'受傷了'},
+      {bad:'🤒',tool:'💊',name:'藥水',msg:'生病了'},
+      {bad:'🦠',tool:'🛁',name:'洗澡',msg:'髒髒的'},
+      {bad:'😿',tool:'🍖',name:'食物',msg:'肚子餓'}
+    ];
+    let n=8, cured=0;
+    const self=this;
+    Score.show('治好 0');
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;';
+    const speech=el('div'); speech.style.cssText='margin-top:46px;background:#fff;border:4px solid #ffd0e2;border-radius:20px;padding:8px 18px;font-weight:900;font-size:clamp(18px,3vw,24px);color:#d6457f;box-shadow:0 4px 0 #ffc2da;';
+    const stagePet=el('div'); stagePet.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;position:relative;';
+    const pet=el('div'); pet.style.cssText='font-size:clamp(90px,20vw,150px);filter:drop-shadow(0 8px 8px rgba(0,0,0,.18));transition:transform .2s;'; stagePet.appendChild(pet);
+    const badge=el('div'); badge.style.cssText='position:absolute;font-size:48px;transform:translate(48px,-44px);'; stagePet.appendChild(badge);
+    const tools=el('div'); tools.className='row-wrap'; tools.style.cssText='padding:14px;';
+    let curProb;
+    function load(){
+      pet.textContent=pick(animals); curProb=pick(problems);
+      badge.textContent=curProb.bad; speech.textContent='嗚嗚～'+curProb.msg;
+      const opts=shuffle([curProb, ...shuffle(problems.filter(p=>p!==curProb)).slice(0,2)]);
+      tools.innerHTML='';
+      opts.forEach(o=>{
+        const b=el('button'); b.style.cssText='border:none;cursor:pointer;border-radius:18px;background:#fff;box-shadow:0 5px 0 #e7b7cd,inset 0 0 0 3px #ffe0ec;font-size:48px;width:84px;height:84px;';
+        b.innerHTML='<span>'+o.tool+'</span><div style="font-size:14px;color:#b85;font-weight:900;margin-top:-6px">'+o.name+'</div>';
+        b.onclick=()=>{
+          if(o===curProb){
+            Sound.good(); badge.textContent='💖'; speech.textContent='謝謝你！'; pet.style.transform='scale(1.15)';
+            cured++; Score.show('治好 '+cured);
+            setTimeout(()=>{pet.style.transform='';
+              if(cured>=n) celebrate(card,'你是最棒的醫生！',()=>self.start(st)); else load();
+            },650);
+          }else{Sound.bad(); b.classList.add('shake'); setTimeout(()=>b.classList.remove('shake'),350);}
+        };
+        tools.appendChild(b);
+      });
+    }
+    wrap.appendChild(speech); wrap.appendChild(stagePet); wrap.appendChild(tools); card.appendChild(wrap);
+    load();
+  }
+});
+/* ===================== GAME 4: 消防員救援 ===================== */
+GAMES.push({
+  id:'fire', title:'消防員', icon:'🚒', color:'#ff7a6b', color2:'#ff3b30',
+  start(st){
+    const card=makeCard(st);
+    card.style.background='linear-gradient(180deg,#2b2f4a,#4a3550 70%,#5e4a3a)';
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;';
+    const house=el('div'); house.innerHTML='🏠'; house.style.cssText='position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);font-size:clamp(110px,26vw,200px);filter:drop-shadow(0 10px 10px rgba(0,0,0,.4));';
+    const cat=el('div'); cat.textContent='🐱'; cat.style.cssText='position:absolute;left:50%;top:24%;transform:translateX(-50%);font-size:46px;display:none;';
+    wrap.appendChild(house); wrap.appendChild(cat);
+    const positions=[[30,40],[68,42],[42,62],[60,66],[50,30]];
+    let total=positions.length, out=0;
+    Score.show('火 '+total);
+    positions.forEach(([x,y])=>{
+      const f=el('button'); f.dataset.life='3';
+      f.style.cssText='position:absolute;left:'+x+'%;top:'+y+'%;transform:translate(-50%,-50%);border:none;background:none;cursor:pointer;font-size:clamp(44px,10vw,80px);filter:drop-shadow(0 0 14px #ff8a00);';
+      f.textContent='🔥';
+      f.onclick=()=>{
+        let life=+f.dataset.life-1; f.dataset.life=life;
+        Sound.blip(300+life*120,.08,'sine',.12);
+        const splash=el('div'); splash.textContent='💦'; splash.style.cssText='position:absolute;left:'+x+'%;top:'+y+'%;transform:translate(-50%,-90%);font-size:40px;pointer-events:none;animation:tappop .4s;';
+        wrap.appendChild(splash); setTimeout(()=>splash.remove(),400);
+        if(life<=0){f.textContent='💨'; f.style.filter='none'; f.disabled=true;
+          setTimeout(()=>f.style.opacity='0',300);
+          out++; Score.show('火 '+(total-out));
+          if(out>=total){cat.style.display='block'; cat.classList.add('tap-pop');
+            setTimeout(()=>celebrate(card,'火滅了，貓咪得救！',()=>this.start(st)),500);}
+        }else{f.style.fontSize=(parseInt(getComputedStyle(f).fontSize)*0.8)+'px';}
+      };
+      wrap.appendChild(f);
+    });
+    card.appendChild(wrap);
+    card.appendChild(el('div','hint','用力點火焰，把火噴熄！'));
+  }
+});
+
+/* ===================== GAME 5: 蓋房子 ===================== */
+GAMES.push({
+  id:'build', title:'蓋房子', icon:'🏠', color:'#7bb8ff', color2:'#3b82f6',
+  start(st){
+    const card=makeCard(st);
+    card.style.background='linear-gradient(180deg,#bfe6ff 0 70%,#9bd67a 70% 100%)';
+    const parts=[
+      {id:'base', name:'地基', svg:'<rect x="60" y="250" width="180" height="40" rx="8" fill="#9b7b56"/>'},
+      {id:'wall', name:'牆壁', svg:'<rect x="70" y="150" width="160" height="100" fill="#ffd98a" stroke="#e0a94a" stroke-width="4"/>'},
+      {id:'roof', name:'屋頂', svg:'<polygon points="55,150 150,80 245,150" fill="#e8553e" stroke="#b53a28" stroke-width="4"/>'},
+      {id:'door', name:'門', svg:'<rect x="130" y="195" width="40" height="55" rx="6" fill="#8a5a2b"/><circle cx="160" cy="222" r="3" fill="#ffd54a"/>'},
+      {id:'window', name:'窗戶', svg:'<rect x="90" y="170" width="34" height="34" fill="#9be3ff" stroke="#4d9bff" stroke-width="3"/><line x1="107" y1="170" x2="107" y2="204" stroke="#4d9bff" stroke-width="3"/>'},
+      {id:'chimney', name:'煙囪', svg:'<rect x="195" y="95" width="26" height="45" fill="#b5654a"/>'}
+    ];
+    const placed=new Set();
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const svgBox=el('div'); svgBox.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;';
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 300 300'); svg.style.cssText='width:min(80%,360px);height:auto;filter:drop-shadow(0 8px 8px rgba(0,0,0,.15))';
+    const groups={};
+    parts.forEach(p=>{const g=document.createElementNS('http://www.w3.org/2000/svg','g'); g.innerHTML=p.svg; g.style.opacity='0'; g.style.transition='opacity .3s, transform .3s'; g.style.transform='translateY(-20px)'; svg.appendChild(g); groups[p.id]=g;});
+    svgBox.appendChild(svg);
+    const palette=el('div'); palette.className='row-wrap'; palette.style.cssText='padding:12px;';
+    parts.forEach(p=>{
+      const b=el('button'); b.style.cssText='border:none;cursor:pointer;border-radius:16px;background:#fff;box-shadow:0 5px 0 #bcd;padding:8px 12px;font-weight:900;color:#3b6;font-size:17px;';
+      b.textContent=p.name;
+      b.onclick=()=>{
+        if(placed.has(p.id))return; placed.add(p.id); Sound.pop();
+        const g=groups[p.id]; g.style.opacity='1'; g.style.transform='translateY(0)';
+        b.style.background='#cfeedd'; b.style.boxShadow='none'; b.textContent='✓ '+p.name;
+        if(placed.size===parts.length){
+          const fam=el('div'); fam.textContent='👨‍👩‍👧'; fam.style.cssText='position:absolute;left:50%;bottom:18%;transform:translateX(-50%);font-size:50px;animation:tappop .5s;';
+          wrap.appendChild(fam);
+          setTimeout(()=>celebrate(card,'新家蓋好囉！',()=>this.start(st)),500);
+        }
+      };
+      palette.appendChild(b);
+    });
+    wrap.appendChild(svgBox); wrap.appendChild(palette); card.appendChild(wrap);
+    card.appendChild(el('div','hint','點下面的積木，蓋一間房子！'));
+  }
+});
+
+/* ===================== GAME 6: 著色塗鴉 ===================== */
+GAMES.push({
+  id:'color', title:'著色塗鴉', icon:'🎨', color:'#b18bff', color2:'#7c4dff',
+  start(st){
+    const card=makeCard(st);
+    const pics={
+      flower:'<g><path class="fillable" d="M150 95a30 30 0 1 1 0 .1" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        [0,72,144,216,288].map(a=>'<ellipse class="fillable" cx="'+(150+Math.cos(a*Math.PI/180)*46)+'" cy="'+(110+Math.sin(a*Math.PI/180)*46)+'" rx="26" ry="20" fill="#fff" stroke="#444" stroke-width="3" transform="rotate('+a+' '+(150+Math.cos(a*Math.PI/180)*46)+' '+(110+Math.sin(a*Math.PI/180)*46)+')"/>').join('')+
+        '<rect class="fillable" x="144" y="135" width="12" height="120" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<path class="fillable" d="M150 200 Q100 180 95 220 Q140 225 150 205Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<path class="fillable" d="M150 220 Q200 200 205 240 Q160 245 150 225Z" fill="#fff" stroke="#444" stroke-width="3"/></g>',
+      fish:'<g><path class="fillable" d="M70 150 Q150 80 230 150 Q150 220 70 150Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<path class="fillable" d="M225 150 L275 110 L275 190Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<path class="fillable" d="M140 100 Q160 70 180 100Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<circle class="fillable" cx="110" cy="140" r="12" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<circle cx="110" cy="140" r="5" fill="#333"/>'+
+        '<circle class="fillable" cx="60" cy="120" r="9" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<circle class="fillable" cx="48" cy="180" r="7" fill="#fff" stroke="#444" stroke-width="3"/></g>',
+      car:'<g><path class="fillable" d="M40 200 L70 140 L130 140 L160 110 L240 110 L260 200Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<rect class="fillable" x="80" y="120" width="50" height="40" rx="6" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<rect class="fillable" x="160" y="120" width="60" height="40" rx="6" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<circle class="fillable" cx="95" cy="205" r="26" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<circle class="fillable" cx="210" cy="205" r="26" fill="#fff" stroke="#444" stroke-width="3"/></g>',
+      butterfly:'<g><ellipse class="fillable" cx="150" cy="150" rx="10" ry="55" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<path class="fillable" d="M145 120 Q80 70 95 130 Q70 150 100 165 Q120 175 145 150Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<path class="fillable" d="M155 120 Q220 70 205 130 Q230 150 200 165 Q180 175 155 150Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<path class="fillable" d="M145 155 Q95 165 105 205 Q120 220 145 185Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<path class="fillable" d="M155 155 Q205 165 195 205 Q180 220 155 185Z" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<line x1="150" y1="100" x2="135" y2="78" stroke="#444" stroke-width="3"/><line x1="150" y1="100" x2="165" y2="78" stroke="#444" stroke-width="3"/>'+
+        '<circle cx="135" cy="76" r="4" fill="#444"/><circle cx="165" cy="76" r="4" fill="#444"/></g>',
+      house2:'<g><polygon class="fillable" points="60,140 150,75 240,140" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<rect class="fillable" x="80" y="140" width="140" height="110" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<rect class="fillable" x="130" y="190" width="40" height="60" rx="4" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<rect class="fillable" x="95" y="160" width="30" height="30" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<rect class="fillable" x="175" y="160" width="30" height="30" fill="#fff" stroke="#444" stroke-width="3"/>'+
+        '<circle class="fillable" cx="210" cy="55" r="18" fill="#fff" stroke="#444" stroke-width="3"/></g>'
+    };
+    const colors=['#ff5e57','#ff9f43','#ffd54a','#3fc66b','#4d9bff','#9b6dff','#ff7eb3','#8a5a2b','#000000','#ffffff'];
+    let active=colors[0], key='flower';
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const top=el('div'); top.style.cssText='display:flex;gap:8px;justify-content:center;padding:8px;flex-wrap:wrap;';
+    ['flower','fish','car','butterfly','house2'].forEach(k=>{const nm={flower:'🌸 花',fish:'🐟 魚',car:'🚗 車',butterfly:'🦋 蝶',house2:'🏠 家'}[k];
+      const b=el('button'); b.style.cssText='border:none;cursor:pointer;border-radius:14px;background:#eee;font-weight:900;padding:6px 14px;font-size:16px;box-shadow:0 4px 0 #ccc;';
+      b.textContent=nm; b.onclick=()=>{Sound.tap(); key=k; draw(); markSel(top,b);}; top.appendChild(b);});
+    const picBox=el('div'); picBox.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;';
+    const pal=el('div'); pal.style.cssText='display:flex;gap:8px;justify-content:center;padding:10px;flex-wrap:wrap;';
+    const colorNames={'#ff5e57':'紅色','#ff9f43':'橘色','#ffd54a':'黃色','#3fc66b':'綠色','#4d9bff':'藍色','#9b6dff':'紫色','#ff7eb3':'粉紅色','#8a5a2b':'咖啡色','#000000':'黑色','#ffffff':'白色'};
+    colors.forEach(c=>{const sw=el('button'); sw.style.cssText='width:42px;height:42px;border-radius:50%;border:4px solid #fff;cursor:pointer;background:'+c+';box-shadow:0 3px 6px rgba(0,0,0,.25);';
+      sw.onclick=()=>{Sound.tap(); active=c; Speak.say(colorNames[c]||''); [...pal.children].forEach(x=>x.style.outline='none'); sw.style.outline='4px solid #333';}; pal.appendChild(sw);});
+    pal.firstChild.style.outline='4px solid #333';
+    const clr=el('button'); clr.textContent='🧽 清除'; clr.style.cssText='border:none;cursor:pointer;border-radius:14px;background:#ffd54a;font-weight:900;padding:8px 16px;font-size:16px;box-shadow:0 4px 0 #e0a900;margin-left:6px;';
+    clr.onclick=()=>{Sound.tap(); draw();}; pal.appendChild(clr);
+    function markSel(par,b){[...par.children].forEach(x=>{x.style.background='#eee';x.style.boxShadow='0 4px 0 #ccc';x.style.color='#333';}); b.style.background='#7c4dff';b.style.color='#fff';b.style.boxShadow='0 4px 0 #5a2fd6';}
+    function draw(){
+      const svg='<svg viewBox="0 0 300 300" style="width:min(86%,360px);height:auto">'+pics[key]+'</svg>';
+      picBox.innerHTML=svg;
+      picBox.querySelectorAll('.fillable').forEach(r=>{ r.style.cursor='pointer';
+        r.addEventListener('click',()=>{Sound.pop(); r.setAttribute('fill',active);});});
+    }
+    markSel(top, top.children[0]);
+    wrap.appendChild(top); wrap.appendChild(picBox); wrap.appendChild(pal); card.appendChild(wrap);
+    draw();
+    card.appendChild(el('div','hint','選顏色，再點圖案上色！'));
+  }
+});
+/* ===================== GAME 7: 數學闖關 ===================== */
+GAMES.push({
+  id:'math', title:'數學闖關', icon:'🔢', color:'#3fd0d0', color2:'#0aa3a3',
+  start(st){
+    const card=makeCard(st);
+    const fruits=['🍎','🍌','🍓','🍊','🍇','🐥','⭐','🎈'];
+    const self=this;
+    // difficulty intro
+    const intro=el('div','diff-wrap');
+    intro.appendChild(el('div','', '<div style="font-size:clamp(22px,4vw,30px);font-weight:900;color:#088">選一個難度開始 🔢</div>'));
+    const modes=[
+      {m:'count', label:'🐣 幼幼（數數）', col:'#3fc66b', sh:'#2ba14f'},
+      {m:'add',   label:'🌟 小班（加法）', col:'#4d9bff', sh:'#2f7fe0'},
+      {m:'mix',   label:'🚀 大班（加減）', col:'#9b6dff', sh:'#7c4dff'}
+    ];
+    modes.forEach(o=>{const b=el('button','diff-btn'); b.style.background=o.col; b.style.boxShadow='0 6px 0 '+o.sh;
+      b.textContent=o.label; b.onclick=()=>{Sound.tap(); intro.remove(); play(o.m);}; intro.appendChild(b);});
+    card.appendChild(intro);
+
+    function play(mode){
+      let level=0, totalLv=10;
+      Score.show('關卡 1/'+totalLv);
+      const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px;';
+      const qBox=el('div'); qBox.style.cssText='font-size:clamp(26px,5vw,40px);font-weight:900;text-align:center;min-height:120px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;';
+      const ansRow=el('div'); ansRow.className='row-wrap';
+      wrap.appendChild(qBox); wrap.appendChild(ansRow); card.appendChild(wrap);
+      function make(){
+        const f=pick(fruits); let answer, q, spoken;
+        if(mode==='count'){ const n=rand(1,6); answer=n; q='<div>數一數有幾個？</div><div style="font-size:46px">'+f.repeat(n)+'</div>'; spoken='數數看，有幾個？'; }
+        else if(mode==='add'){ const a=rand(1,5),b=rand(1,4); answer=a+b;
+          q='<div style="font-size:42px">'+f.repeat(a)+' ➕ '+f.repeat(b)+'</div><div>= ？</div>'; spoken=a+' 加 '+b+'，等於多少？'; }
+        else { if(Math.random()<0.5){ const a=rand(3,9),b=rand(2,6); answer=a+b;
+            q='<div style="font-size:36px">'+f.repeat(a)+' ➕ '+f.repeat(b)+'</div><div>= ？</div>'; spoken=a+' 加 '+b+'，等於多少？'; }
+          else { const a=rand(5,10),b=rand(1,4); answer=a-b;
+            q='<div style="font-size:36px">'+f.repeat(a)+'</div><div>拿走 '+b+' 個 = ？</div>'; spoken=a+' 減 '+b+'，等於多少？'; } }
+        qBox.innerHTML=q; Speak.say(spoken);
+        const opts=new Set([answer]); while(opts.size<3){const d=answer+rand(-3,3); if(d>=0)opts.add(d);}
+        ansRow.innerHTML='';
+        shuffle([...opts]).forEach(o=>{
+          const b=el('button'); b.style.cssText='border:none;cursor:pointer;border-radius:20px;background:#fff;box-shadow:0 6px 0 #b8e0e0,inset 0 0 0 3px #d6f2f2;font-size:40px;font-weight:900;color:#088;width:90px;height:90px;';
+          b.textContent=o;
+          b.onclick=()=>{
+            if(o===answer){Sound.good(); b.classList.add('tap-pop'); level++;
+              if(level>=totalLv){setTimeout(()=>celebrate(card,'闖關成功！你好厲害！',()=>self.start(st)),300);}
+              else{Score.show('關卡 '+(level+1)+'/'+totalLv); setTimeout(make,350);}
+            }else{Sound.bad(); b.classList.add('shake'); setTimeout(()=>b.classList.remove('shake'),350);}
+          };
+          ansRow.appendChild(b);
+        });
+      }
+      make();
+    }
+  }
+});
+
+/* ===================== GAME 8: 做蛋糕 ===================== */
+GAMES.push({
+  id:'cake', title:'做蛋糕', icon:'🎂', color:'#ff9bbf', color2:'#ff4d8d',
+  start(st){
+    const card=makeCard(st);
+    card.style.background='linear-gradient(180deg,#fff0f6,#ffe1ec)';
+    const state={base:'#f4c98a',cream:'#fff',toppings:[]};
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const view=el('div'); view.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;';
+    const controls=el('div'); controls.style.cssText='padding:10px;display:flex;flex-direction:column;gap:8px;';
+    function render(){
+      let t=state.toppings.map((tp,i)=>{const x=70+(i%5)*40; const y=(i<5?138:118); return '<text x="'+x+'" y="'+y+'" font-size="26" text-anchor="middle">'+tp+'</text>';}).join('');
+      view.innerHTML='<svg viewBox="0 0 300 260" style="width:min(78%,340px);height:auto;filter:drop-shadow(0 8px 8px rgba(0,0,0,.15))">'+
+        '<ellipse cx="150" cy="236" rx="128" ry="18" fill="#e9d3e0"/>'+
+        '<ellipse cx="150" cy="232" rx="120" ry="14" fill="#fff"/>'+
+        '<rect x="50" y="150" width="200" height="78" rx="12" fill="'+state.base+'"/>'+
+        '<rect x="50" y="158" width="200" height="16" fill="'+state.cream+'"/>'+
+        '<path d="M50 158 Q70 142 90 158 T130 158 T170 158 T210 158 T250 158 L250 170 L50 170Z" fill="'+state.cream+'"/>'+
+        t +'</svg>';
+    }
+    function group(label, items){
+      const g=el('div'); g.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;';
+      g.appendChild(el('span','', '<b style="color:#d6457f;font-size:15px">'+label+'</b>'));
+      items.forEach(it=>{const b=el('button'); b.style.cssText='border:none;cursor:pointer;border-radius:14px;background:#fff;box-shadow:0 4px 0 #f3b9cf;padding:6px 10px;font-size:24px;';
+        b.innerHTML=it.label; b.onclick=()=>{Sound.pop(); it.act(); render();}; g.appendChild(b);});
+      return g;
+    }
+    controls.appendChild(group('蛋糕',[
+      {label:'🟡',act:()=>state.base='#f4c98a'},{label:'🟤',act:()=>state.base='#8a5a2b'},{label:'🩷',act:()=>state.base='#ff9bbf'}]));
+    controls.appendChild(group('奶油',[
+      {label:'⚪',act:()=>state.cream='#ffffff'},{label:'🟫',act:()=>state.cream='#7b4a25'},{label:'💗',act:()=>state.cream='#ff8fb3'},{label:'💛',act:()=>state.cream='#ffe066'}]));
+    controls.appendChild(group('裝飾',[
+      {label:'🍓',act:()=>add('🍓')},{label:'🫐',act:()=>add('🫐')},{label:'🍫',act:()=>add('🍫')},{label:'🕯️',act:()=>add('🕯️')},{label:'🌈',act:()=>add('🌈')}]));
+    function add(e){ if(state.toppings.length<10) state.toppings.push(e); }
+    const done=el('button','bigbtn','🎉 完成蛋糕'); done.style.alignSelf='center'; done.style.margin='4px';
+    done.onclick=()=>celebrate(card,'蛋糕完成，生日快樂！',()=>this.start(st));
+    controls.appendChild(done);
+    wrap.appendChild(view); wrap.appendChild(controls); card.appendChild(wrap);
+    render();
+    card.appendChild(el('div','hint','選蛋糕、奶油，加上你愛的裝飾！'));
+  }
+});
+
+/* ===================== GAME 9: 公主換裝 ===================== */
+GAMES.push({
+  id:'princess', title:'公主換裝', icon:'👑', color:'#e08bff', color2:'#b14dff',
+  start(st){
+    const card=makeCard(st);
+    card.style.background='linear-gradient(180deg,#f6e6ff,#ffe9f6)';
+    const state={hair:'#5a3a1a',dress:'#ff6fa5',crown:true,wand:false,skin:'#ffd9b8'};
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const view=el('div'); view.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;';
+    const controls=el('div'); controls.style.cssText='padding:8px 10px;display:flex;flex-direction:column;gap:7px;';
+    function render(){
+      view.innerHTML='<svg viewBox="0 0 240 320" style="width:min(60%,230px);height:auto;filter:drop-shadow(0 8px 10px rgba(0,0,0,.18))">'+
+        (state.crown?'<polygon points="92,46 104,30 120,44 136,30 148,46 148,58 92,58" fill="#ffd54a" stroke="#e0a900" stroke-width="2"/><circle cx="120" cy="34" r="4" fill="#ff5e57"/>':'')+
+        '<path d="M82 70 Q70 130 84 150 L156 150 Q170 130 158 70 Q150 50 120 50 Q90 50 82 70Z" fill="'+state.hair+'"/>'+
+        '<circle cx="120" cy="80" r="34" fill="'+state.skin+'"/>'+
+        '<path d="M86 70 Q120 50 154 70 Q150 56 120 54 Q90 56 86 70Z" fill="'+state.hair+'"/>'+
+        '<circle cx="108" cy="80" r="4" fill="#3a2f4a"/><circle cx="132" cy="80" r="4" fill="#3a2f4a"/>'+
+        '<path d="M112 92 Q120 98 128 92" stroke="#c0566f" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+        '<circle cx="100" cy="88" r="5" fill="#ffb3c6" opacity=".7"/><circle cx="140" cy="88" r="5" fill="#ffb3c6" opacity=".7"/>'+
+        '<rect x="110" y="112" width="20" height="24" fill="'+state.skin+'"/>'+
+        '<path d="M120 130 L80 290 L160 290Z" fill="'+state.dress+'"/>'+
+        '<path d="M120 130 Q150 140 152 175 L150 185 Q130 165 120 165Z" fill="'+state.dress+'"/>'+
+        '<path d="M120 130 Q90 140 88 175 L90 185 Q110 165 120 165Z" fill="'+state.dress+'"/>'+
+        '<circle cx="120" cy="150" r="6" fill="#fff" opacity=".8"/>'+
+        (state.wand?'<line x1="150" y1="180" x2="185" y2="140" stroke="#ffd54a" stroke-width="5" stroke-linecap="round"/><text x="178" y="142" font-size="26">⭐</text>':'')+
+        '</svg>';
+    }
+    function group(label, items){
+      const g=el('div'); g.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;';
+      g.appendChild(el('span','','<b style="color:#a14dd6;font-size:15px">'+label+'</b>'));
+      items.forEach(it=>{const b=el('button');
+        if(it.color){b.style.cssText='width:36px;height:36px;border-radius:50%;border:3px solid #fff;cursor:pointer;background:'+it.color+';box-shadow:0 3px 5px rgba(0,0,0,.2);';}
+        else{b.style.cssText='border:none;cursor:pointer;border-radius:14px;background:#fff;box-shadow:0 4px 0 #e3c0f0;padding:6px 12px;font-size:20px;font-weight:900;color:#a14dd6;'; b.textContent=it.label;}
+        b.onclick=()=>{Sound.pop(); it.act(); render();}; g.appendChild(b);});
+      return g;
+    }
+    controls.appendChild(group('頭髮',['#5a3a1a','#1a1a1a','#e8a33d','#ff7eb3','#9b6dff'].map(c=>({color:c,act:()=>state.hair=c}))));
+    controls.appendChild(group('禮服',['#ff6fa5','#4d9bff','#3fc66b','#ffd54a','#9b6dff','#ff5e57'].map(c=>({color:c,act:()=>state.dress=c}))));
+    controls.appendChild(group('飾品',[
+      {label:'👑',act:()=>state.crown=!state.crown},{label:'🪄',act:()=>state.wand=!state.wand}]));
+    const done=el('button','bigbtn','✨ 完成造型'); done.style.cssText+=';align-self:center;background:#b14dff;box-shadow:0 6px 0 #8a2fd6;';
+    done.onclick=()=>celebrate(card,'好美的公主！',()=>this.start(st));
+    controls.appendChild(done);
+    wrap.appendChild(view); wrap.appendChild(controls); card.appendChild(wrap);
+    render();
+    card.appendChild(el('div','hint','幫公主換髮型、禮服和飾品！'));
+  }
+});
+
+/* ===================== GAME 10: 拼圖 ===================== */
+GAMES.push({
+  id:'puzzle', title:'拼圖遊戲', icon:'🧩', color:'#5ad6e6', color2:'#1aa3c4',
+  start(st){
+    const card=makeCard(st);
+    const scenes={
+      house:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#bfe6ff"/><circle cx="160" cy="40" r="22" fill="#ffd54a"/><rect y="150" width="200" height="50" fill="#8ed16a"/><polygon points="50,120 100,75 150,120" fill="#e8553e"/><rect x="62" y="120" width="76" height="55" fill="#ffd98a"/><rect x="88" y="140" width="24" height="35" fill="#8a5a2b"/><circle cx="106" cy="158" r="2.5" fill="#fff"/></svg>',
+      rocket:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#2b2f4a"/><circle cx="40" cy="40" r="3" fill="#fff"/><circle cx="160" cy="60" r="3" fill="#fff"/><circle cx="120" cy="30" r="2" fill="#fff"/><circle cx="60" cy="150" r="2" fill="#fff"/><ellipse cx="100" cy="100" rx="22" ry="48" fill="#e8e8f0"/><circle cx="100" cy="80" r="11" fill="#7bd0ff"/><polygon points="78,120 62,150 78,140" fill="#ff5e57"/><polygon points="122,120 138,150 122,140" fill="#ff5e57"/><polygon points="92,148 100,175 108,148" fill="#ff9f43"/></svg>',
+      cat:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#ffe9c7"/><polygon points="60,70 70,40 90,65" fill="#f4a23c"/><polygon points="140,70 130,40 110,65" fill="#f4a23c"/><circle cx="100" cy="105" r="50" fill="#f7b955"/><circle cx="82" cy="98" r="7" fill="#3a2f4a"/><circle cx="118" cy="98" r="7" fill="#3a2f4a"/><polygon points="95,112 105,112 100,120" fill="#ff7eb3"/><path d="M100 120 Q90 130 78 124" stroke="#7a4a1a" stroke-width="3" fill="none"/><path d="M100 120 Q110 130 122 124" stroke="#7a4a1a" stroke-width="3" fill="none"/></svg>',
+      flower:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#d8f0ff"/><rect y="150" width="200" height="50" fill="#8ed16a"/><rect x="96" y="90" width="8" height="80" fill="#3a9d4a"/><ellipse cx="80" cy="130" rx="18" ry="9" fill="#3a9d4a"/>'+[0,60,120,180,240,300].map(a=>'<ellipse cx="'+(100+Math.cos(a*Math.PI/180)*26)+'" cy="'+(80+Math.sin(a*Math.PI/180)*26)+'" rx="16" ry="12" fill="#ff7eb3" transform="rotate('+a+' '+(100+Math.cos(a*Math.PI/180)*26)+' '+(80+Math.sin(a*Math.PI/180)*26)+')"/>').join('')+'<circle cx="100" cy="80" r="16" fill="#ffd54a"/></svg>'
+    };
+    let sceneKey='cat', N=2;
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const opts=el('div'); opts.style.cssText='display:flex;gap:8px;justify-content:center;padding:8px;flex-wrap:wrap;';
+    function ob(label,fn,on){const b=el('button'); b.style.cssText='border:none;cursor:pointer;border-radius:12px;background:'+(on?'#1aa3c4':'#e6f6fa')+';color:'+(on?'#fff':'#0a7')+';font-weight:900;padding:6px 12px;font-size:15px;box-shadow:0 3px 0 #bce;';
+      b.textContent=label; b.onclick=()=>{Sound.tap(); fn();}; return b;}
+    function buildOpts(){opts.innerHTML='';
+      [['🐱貓','cat'],['🌷花','flower'],['🏠房子','house'],['🚀火箭','rocket']].forEach(([l,k])=>opts.appendChild(ob(l,()=>{sceneKey=k;deal();},sceneKey===k)));
+      opts.appendChild(el('span','','　'));
+      opts.appendChild(ob('簡單',()=>{N=2;deal();},N===2));
+      opts.appendChild(ob('普通',()=>{N=3;deal();},N===3));
+    }
+    const area=el('div'); area.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:8px;';
+    const board=el('div'); const tray=el('div');
+    board.style.cssText='display:grid;gap:3px;background:#cfe;padding:4px;border-radius:10px;';
+    tray.style.cssText='display:flex;flex-wrap:wrap;gap:6px;max-width:46%;justify-content:center;';
+    area.appendChild(board); area.appendChild(tray);
+    let selected=null, placedCount=0;
+    function deal(){
+      buildOpts(); selected=null; placedCount=0;
+      const url=svgURL(scenes[sceneKey]);
+      const size=Math.min(280, 320)/1; const cell=Math.floor(Math.min(260, 70*N)/N)*0; // computed below
+      const px=Math.floor(Math.min(64*N, 270)/N);
+      board.style.gridTemplateColumns='repeat('+N+','+px+'px)';
+      board.innerHTML=''; tray.innerHTML='';
+      const slots=[];
+      for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+        const slot=el('div'); slot.style.cssText='width:'+px+'px;height:'+px+'px;background:#eef;border:2px dashed #9bd;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#9bd;font-size:12px;';
+        slot.dataset.idx=r*N+c; slot.dataset.filled='0';
+        slot.onclick=()=>{
+          if(!selected||slot.dataset.filled==='1')return;
+          if(+selected.dataset.idx===+slot.dataset.idx){
+            Sound.good();
+            slot.style.backgroundImage=url; slot.style.backgroundSize=(N*100)+'% '+(N*100)+'%';
+            slot.style.backgroundPosition=(c/(N-1||1)*100)+'% '+(r/(N-1||1)*100)+'%';
+            slot.style.border='none'; slot.dataset.filled='1'; slot.textContent='';
+            selected.remove(); selected=null; placedCount++;
+            if(placedCount===N*N) setTimeout(()=>celebrate(card,'拼好了！好棒！',deal),400);
+          }else{Sound.bad(); slot.classList.add('shake'); setTimeout(()=>slot.classList.remove('shake'),350);}
+        };
+        board.appendChild(slot); slots.push(slot);
+      }
+      // pieces
+      const pieces=[];
+      for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+        const p=el('div'); p.dataset.idx=r*N+c;
+        p.style.cssText='width:'+px+'px;height:'+px+'px;border-radius:6px;cursor:pointer;background-image:'+url+';background-size:'+(N*100)+'% '+(N*100)+'%;background-position:'+(c/(N-1||1)*100)+'% '+(r/(N-1||1)*100)+'%;box-shadow:0 3px 6px rgba(0,0,0,.2);border:2px solid #fff;';
+        p.onclick=()=>{Sound.tap(); selected=p; [...tray.children].forEach(x=>x.style.outline='none'); p.style.outline='4px solid #ffd54a';};
+        pieces.push(p);
+      }
+      shuffle(pieces).forEach(p=>tray.appendChild(p));
+    }
+    wrap.appendChild(opts); wrap.appendChild(area); card.appendChild(wrap);
+    deal();
+    card.appendChild(el('div','hint','點一塊拼圖，再點對的格子！'));
+  }
+});
+
+/* ===================== GAME 11: 記憶翻牌 ===================== */
+GAMES.push({
+  id:'memory', title:'記憶翻牌', icon:'🃏', color:'#9b8bff', color2:'#6a4dff',
+  say:'記憶翻牌，找出兩張一樣的！',
+  start(st){
+    const card=makeCard(st);
+    const faces=['🐶','🐱','🦊','🐸','🐵','🐯','🐼','🦁','🐷','🐰'];
+    const pairs=shuffle(faces).slice(0,6);
+    const deck=shuffle([...pairs,...pairs]);
+    let first=null, lock=false, matched=0;
+    Score.show('配對 0/6');
+    const grid=el('div','mem-grid'); grid.style.gridTemplateColumns='repeat(4,1fr)';
+    grid.style.maxWidth='min(420px,94%)'; grid.style.margin='0 auto';
+    deck.forEach(face=>{
+      const c=el('div','mcard');
+      c.innerHTML='<div class="mface mback">❓</div><div class="mface mfront">'+face+'</div>';
+      c.dataset.face=face;
+      c.onclick=()=>{
+        if(lock||c.classList.contains('flipped')||c.classList.contains('matched'))return;
+        c.classList.add('flipped'); Sound.pop();
+        if(!first){first=c;return;}
+        lock=true;
+        if(first.dataset.face===c.dataset.face){
+          Sound.good(); Speak.say('一樣！');
+          const a=first;
+          setTimeout(()=>{a.classList.add('matched'); c.classList.add('matched'); first=null; lock=false; matched++; Score.show('配對 '+matched+'/6');
+            if(matched===6) celebrate(card,'全部配對成功！',()=>this.start(st));
+          },450);
+        }else{
+          const a=first;
+          setTimeout(()=>{a.classList.remove('flipped'); c.classList.remove('flipped'); first=null; lock=false;},800);
+        }
+      };
+      grid.appendChild(c);
+    });
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;';
+    wrap.appendChild(grid); card.appendChild(wrap);
+    card.appendChild(el('div','hint','翻兩張卡片，找一樣的！'));
+  }
+});
+
+/* ===================== GAME 12: 釣魚 ===================== */
+GAMES.push({
+  id:'fishing', title:'釣魚', icon:'🎣', color:'#3fc6e6', color2:'#1aa3c4',
+  say:'點水裡的魚，把牠們釣起來！',
+  start(st){
+    const card=makeCard(st);
+    card.style.background='linear-gradient(180deg,#a7e9ff,#3fb6e6 85%)';
+    const fishes=['🐠','🐟','🐡','🦈','🐙','🦀','🦑','🐢'];
+    let caught=0, goal=10, alive=true; const timers=[];
+    const self=this;
+    Score.show('釣到 0/'+goal);
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;overflow:hidden;';
+    card.appendChild(wrap);
+    function spawn(){
+      if(!alive)return;
+      const f=el('button'); f.textContent=pick(fishes);
+      const fromLeft=Math.random()<.5; const y=rand(8,82);
+      f.style.cssText='position:absolute;border:none;background:none;cursor:pointer;font-size:clamp(38px,8vw,64px);top:'+y+'%;'+(fromLeft?'left:-15%;':'right:-15%;')+'filter:drop-shadow(0 3px 4px rgba(0,0,0,.2));';
+      if(!fromLeft)f.style.transform='scaleX(-1)';
+      wrap.appendChild(f);
+      const dur=rand(4500,7500);
+      try{ if(f.animate){ const a=f.animate(
+          [{transform:(fromLeft?'translateX(0)':'scaleX(-1) translateX(0)')},{transform:(fromLeft?'translateX(135vw)':'scaleX(-1) translateX(135vw)')}],
+          {duration:dur,easing:'linear'}); a.onfinish=()=>f.remove(); } }catch(e){}
+      f.onclick=()=>{ if(f.dataset.c)return; f.dataset.c='1';
+        Sound.good(); caught++; Score.show('釣到 '+caught+'/'+goal);
+        f.textContent='✨'; setTimeout(()=>f.remove(),200);
+        if(caught>=goal){ alive=false; timers.forEach(clearTimeout); celebrate(card,'釣到好多魚！',()=>self.start(st)); }
+      };
+      timers.push(setTimeout(spawn, rand(650,1300)));
+    }
+    for(let i=0;i<3;i++) timers.push(setTimeout(spawn, i*450));
+    this._cleanup=()=>{ alive=false; timers.forEach(clearTimeout); };
+    card.appendChild(el('div','hint','點游過去的魚就能釣到牠！'));
+  },
+  stop(){ if(this._cleanup)this._cleanup(); }
+});
+
+/* ===================== GAME 13: 音樂鋼琴 ===================== */
+GAMES.push({
+  id:'piano', title:'音樂鋼琴', icon:'🎹', color:'#ff9f43', color2:'#ff6b00',
+  say:'點按琴鍵，彈出好聽的音樂！',
+  start(st){
+    const card=makeCard(st);
+    card.style.background='linear-gradient(180deg,#fff,#f4eafe)';
+    const keys=[
+      {n:'Do',f:261.63,c:'#ff5e57'},{n:'Re',f:293.66,c:'#ff9f43'},{n:'Mi',f:329.63,c:'#ffd54a'},
+      {n:'Fa',f:349.23,c:'#3fc66b'},{n:'So',f:392.0,c:'#4d9bff'},{n:'La',f:440.0,c:'#9b6dff'},
+      {n:'Si',f:493.88,c:'#ff7eb3'},{n:'Do',f:523.25,c:'#ff5e57'}
+    ];
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const piano=el('div','piano');
+    keys.forEach(k=>{
+      const key=el('button','pkey'); key.style.background=k.c; key.textContent=k.n;
+      key.onclick=()=>{ Sound.blip(k.f,.55,'triangle',.25); key.classList.add('down'); setTimeout(()=>key.classList.remove('down'),130); };
+      piano.appendChild(key);
+    });
+    wrap.appendChild(piano); card.appendChild(wrap);
+    card.appendChild(el('div','hint','Do Re Mi Fa So La Si Do 🎵 自由彈奏！'));
+  }
+});
+
+/* ===================== GAME 14: 找不同 ===================== */
+GAMES.push({
+  id:'odd', title:'找不同', icon:'🔍', color:'#16c2a3', color2:'#0a9b82',
+  say:'找出不一樣的那一個！',
+  start(st){
+    const card=makeCard(st);
+    const sets=[['🐶','🐱'],['🍎','🍅'],['🌝','🌞'],['🐰','🐹'],['🐸','🐢'],['⭐','✨'],['🐝','🦋'],['🌷','🌹'],['🚗','🚙'],['🐶','🦊'],['🍊','🍋'],['🐮','🐷']];
+    let round=0, totalR=6;
+    const self=this;
+    Score.show('第 1 關');
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const grid=el('div','odd-grid');
+    wrap.appendChild(grid); card.appendChild(wrap);
+    function make(){
+      const cols=Math.min(2+round,4); const count=cols*cols;
+      const pair=pick(sets); const common=pair[0], odd=pair[1]; const oddIdx=rand(0,count-1);
+      grid.style.gridTemplateColumns='repeat('+cols+',1fr)';
+      grid.style.maxWidth=(cols*84)+'px'; grid.style.margin='0 auto'; grid.innerHTML='';
+      for(let i=0;i<count;i++){
+        const cell=el('div','odd-cell'); cell.textContent=(i===oddIdx?odd:common);
+        cell.onclick=()=>{
+          if(i===oddIdx){Sound.good(); Speak.say('答對了！'); cell.classList.add('tap-pop'); round++;
+            if(round>=totalR) setTimeout(()=>celebrate(card,'你的眼睛好厲害！',()=>self.start(st)),350);
+            else {Score.show('第 '+(round+1)+' 關'); setTimeout(make,420);}
+          }else{Sound.bad(); cell.classList.add('shake'); setTimeout(()=>cell.classList.remove('shake'),350);}
+        };
+        grid.appendChild(cell);
+      }
+    }
+    make();
+    card.appendChild(el('div','hint','哪一個跟別人不一樣呢？'));
+  }
+});
+
+/* ===================== GAME 15: ㄅㄆㄇ發音 ===================== */
+GAMES.push({
+  id:'bopomo', title:'ㄅㄆㄇ', icon:'ㄅ', color:'#b06bff', color2:'#7c3aed',
+  say:'點注音符號，聽聽看怎麼念！',
+  start(st){
+    const card=makeCard(st);
+    const sheng=[
+      ['ㄅ','爸爸','👨'],['ㄆ','葡萄','🍇'],['ㄇ','媽媽','👩'],['ㄈ','飛機','✈️'],
+      ['ㄉ','蛋糕','🎂'],['ㄊ','兔子','🐰'],['ㄋ','牛奶','🥛'],['ㄌ','老虎','🐯'],
+      ['ㄍ','小狗','🐶'],['ㄎ','卡車','🚚'],['ㄏ','花朵','🌸'],
+      ['ㄐ','小雞','🐔'],['ㄑ','汽車','🚗'],['ㄒ','西瓜','🍉'],
+      ['ㄓ','豬','🐷'],['ㄔ','蟲蟲','🐛'],['ㄕ','獅子','🦁'],['ㄖ','肉','🍖'],
+      ['ㄗ','嘴巴','👄'],['ㄘ','草莓','🍓'],['ㄙ','雨傘','☂️']
+    ];
+    const yun=[
+      ['ㄚ','鴨子','🦆'],['ㄛ','蝸牛','🐌'],['ㄜ','白鵝','🦢'],['ㄝ','耶','✌️'],
+      ['ㄞ','愛心','❤️'],['ㄟ','飛機','✈️'],['ㄠ','貓','🐱'],['ㄡ','歐洲','🌍'],
+      ['ㄢ','安全','🦺'],['ㄣ','嗯','🤔'],['ㄤ','糖果','🍬'],['ㄥ','電燈','💡'],
+      ['ㄦ','耳朵','👂'],['ㄧ','衣服','👕'],['ㄨ','烏鴉','🐦'],['ㄩ','魚','🐟']
+    ];
+    const wrap=el('div'); wrap.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;';
+    const tabs=el('div','bp-tabs'); const grid=el('div','bp-grid');
+    function render(data){
+      grid.innerHTML='';
+      data.forEach(([sym,word,emoji])=>{
+        const t=el('div','bp-tile');
+        t.innerHTML='<div class="bp-sym">'+sym+'</div><div class="bp-emoji">'+emoji+'</div><div class="bp-word">'+word+'</div>';
+        t.onclick=()=>{Sound.pop(); t.classList.add('tap-pop'); setTimeout(()=>t.classList.remove('tap-pop'),300); Speak.say(word);};
+        grid.appendChild(t);
+      });
+    }
+    function tabBtn(label,data){const b=el('button','sbtn off'); b.textContent=label;
+      b.onclick=()=>{Sound.tap(); [...tabs.children].forEach(x=>x.className='sbtn off'); b.className='sbtn on'; render(data);}; return b;}
+    const tb1=tabBtn('聲母 ㄅㄆㄇ',sheng), tb2=tabBtn('韻母 ㄚㄛㄜ',yun);
+    tb1.className='sbtn on'; tabs.appendChild(tb1); tabs.appendChild(tb2);
+    wrap.appendChild(tabs); wrap.appendChild(grid); card.appendChild(wrap);
+    render(sheng);
+  }
+});
+
+/* ============ boot ============ */
+bindShell(); renderHome(); Stars.refresh();
+window.GAMES=GAMES; window.openGame=openGame; window.goHome=goHome;
+window.Stars=Stars; window.Settings=Settings; window.Music=Music; window.Speak=Speak;
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
