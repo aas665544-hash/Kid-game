@@ -1,5 +1,5 @@
 /* 歡樂遊戲屋 service worker — 離線快取 */
-const CACHE = 'gamehouse-v7';
+const CACHE = 'gamehouse-v13';
 const ASSETS = [
   './',
   './index.html',
